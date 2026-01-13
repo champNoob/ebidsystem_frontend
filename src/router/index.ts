@@ -6,7 +6,7 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/login', component: LoginView },
-    // { path: '/orders', component: OrdersView }, // 后续实现
+    { path: '/orders', component: OrdersView },
     { path: '/', redirect: '/login' },
   ],
 })
