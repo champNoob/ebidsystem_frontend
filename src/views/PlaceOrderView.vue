@@ -39,7 +39,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { api } from '@/api/axios' // Axios 已封装自动带 token
+import api from '@/api/axios' // Axios 已封装自动带 token
 
 const symbol = ref('')
 const side = ref<'buy' | 'sell'>('buy')

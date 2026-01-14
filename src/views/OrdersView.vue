@@ -1,104 +1,108 @@
 <template>
   <div class="orders-container">
-    <h2>订单列表</h2>
-    <div v-if="loading">加载中...</div>
-    <div v-else-if="error">{{ error }}</div>
-    <div v-else>
-      <div v-if="orders.length === 0">暂无订单</div>
-      <div v-else>
-        <div v-for="order in orders" :key="order.id" class="order-item">
-          <h3>订单 #{{ order.id }}</h3>
-          <p>状态: {{ order.status }}</p>
-          <p>金额: ￥{{ order.amount }}</p>
-          <p>创建时间: {{ formatDate(order.createdAt) }}</p>
-        </div>
-      </div>
-    </div>
+    <h2>当前订单</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Symbol</th>
+          <th>方向</th>
+          <th>价格</th>
+          <th>数量</th>
+          <th>已成交</th>
+          <th>状态</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr v-for="order in orders" :key="order.id">
+          <td>{{ order.id }}</td>
+          <td>{{ order.symbol }}</td>
+          <td>{{ order.side }}</td>
+          <td>{{ order.price }}</td>
+          <td>{{ order.quantity }}</td>
+          <td>{{ order.filled_quantity }}</td>
+          <td>{{ order.status }}</td>
+          <td>
+            <button
+              v-if="order.status === 'pending' || order.status === 'partial'"
+              @click="cancelOrder(order.id)"
+            >
+              撤单
+            </button>
+            <span v-else>-</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div v-if="error" class="error">{{ error }}</div>
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent, ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { useAuth } from '@/composables/useAuth';
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import api from '@/api/axios'
 
 interface Order {
-  id: number;
-  status: string;
-  amount: string;
-  createdAt: Date;
+  id: number
+  symbol: string
+  side: 'buy' | 'sell'
+  price: number
+  quantity: number
+  filled_quantity: number
+  status: 'pending' | 'partial' | 'filled' | 'cancelled'
 }
 
-export default defineComponent({
-  name: 'OrdersView',
-  setup() {
-    const { isAuthenticated } = useAuth();
-    const router = useRouter();
-    const orders = ref<Order[]>([]);
-    const loading = ref(true);
-    const error = ref('');
+const orders = ref<Order[]>([])
+const error = ref('')
 
-    onMounted(async () => {
-      if (!isAuthenticated.value) {
-        router.push('/login');
-        return;
-      }
-      
-      try {
-        // 这里可以添加获取订单数据的API调用
-        // const response = await fetchOrders();
-        // orders.value = response.data;
-        
-        // 模拟数据
-        orders.value = [
-          { id: 1, status: '已完成', amount: '100.00', createdAt: new Date() },
-          { id: 2, status: '处理中', amount: '200.00', createdAt: new Date() },
-        ];
-      } catch (err) {
-        error.value = '加载订单失败';
-        console.error('获取订单失败:', err);
-      } finally {
-        loading.value = false;
-      }
-    });
+async function fetchOrders() {
+  error.value = ''
+  try {
+    const res = await api.get('/api/orders')
+    orders.value = res.data
+  } catch (e: any) {
+    error.value = e?.response?.data?.error || '获取订单失败'
+  }
+}
 
-    const formatDate = (date: Date) => {
-      return new Date(date).toLocaleString();
-    };
+async function cancelOrder(id: number) {
+  try {
+    await api.post(`/api/orders/${id}/cancel`)
+    await fetchOrders()
+  } catch (e: any) {
+    alert(e?.response?.data?.error || '撤单失败')
+  }
+}
 
-    return {
-      orders,
-      loading,
-      error,
-      formatDate,
-    };
-  },
-});
+onMounted(fetchOrders)
 </script>
 
 <style scoped>
 .orders-container {
-  max-width: 800px;
-  margin: 0 auto;
   padding: 20px;
 }
 
-.order-item {
-  border: 1px solid #eee;
-  border-radius: 4px;
-  padding: 15px;
-  margin-bottom: 15px;
-  background-color: #fff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+table {
+  width: 100%;
+  border-collapse: collapse;
 }
 
-.order-item h3 {
-  margin-top: 0;
-  color: #333;
+th, td {
+  border: 1px solid #ccc;
+  padding: 6px;
+  text-align: center;
 }
 
-.order-item p {
-  margin: 5px 0;
-  color: #666;
+button {
+  padding: 4px 8px;
+}
+
+.error {
+  margin-top: 12px;
+  color: red;
 }
 </style>
