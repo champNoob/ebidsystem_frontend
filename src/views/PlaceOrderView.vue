@@ -56,6 +56,7 @@ async function handlePlaceOrder() {
 
   try {
     const response = await api.post('/api/orders', {
+      type: "limit",
       symbol: symbol.value,
       side: side.value,
       price: price.value,

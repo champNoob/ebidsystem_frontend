@@ -1,8 +1,21 @@
 <script setup lang="ts">
+import { useAuth } from '@/composables/useAuth'
+
+const { user } = useAuth()
 </script>
 
 <template>
-  <router-view />
+  <div>
+    <div v-if="user">
+      当前用户：{{ user.username }}（{{ user.role }}）
+    </div>
+    <nav>
+      <RouterLink to="/place-order">下单</RouterLink>
+      <RouterLink to="/orders">当前订单</RouterLink>
+      <RouterLink to="/me">我的账户</RouterLink>
+    </nav>
+    <router-view />
+  </div>
 </template>
 
 <style scoped>
