@@ -14,9 +14,4 @@ if (token.value) {
   })
 }
 
-// const auth = useAuth()
-// if (auth.token.value) {
-//   auth.fetchMe()
-// }
-
 app.mount('#app')

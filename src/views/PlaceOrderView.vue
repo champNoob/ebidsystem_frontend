@@ -11,8 +11,16 @@
       <div class="form-item">
         <label>买卖方向</label>
         <select v-model="side" required>
-          <option value="buy">买入</option>
-          <option value="sell">卖出</option>
+          <option disabled value="">
+            请选择买卖方向
+          </option>
+          <option
+            v-for="s in allowedSides"
+            :key="s"
+            :value="s"
+          >
+            {{ ORDER_SIDE_LABEL[s] }}
+          </option>
         </select>
       </div>
 
@@ -38,21 +46,69 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { loginApi, LoginRequest } from '@/api/auth.api'
 import api from '@/api/axios' // Axios 已封装自动带 token
+import { useAuth } from '@/composables/useAuth'
+import { ROLE_ALLOWED_SIDES, ORDER_SIDE_LABEL } from '@/config/orderRules'
+import type { OrderSide, UserRole } from '@/config/orderRules'
+
+const { user } = useAuth()
 
 const symbol = ref('')
-const side = ref<'buy' | 'sell'>('buy')
+const side = ref<OrderSide | ''>('')
 const price = ref<number | null>(null)
 const quantity = ref<number | null>(null)
+
 const loading = ref(false)
 const message = ref('')
 const isError = ref(false)
+
+// 根据用户角色计算允许的买卖方向
+const allowedSides = computed<OrderSide[]>(() => {
+  const role = user.value?.role as UserRole | undefined
+  if (!role) return []
+  return ROLE_ALLOWED_SIDES[role] || []
+})
+
+// 当角色或 allowedSides 变化时，自动修正 side
+watch(
+  () => user.value?.role,
+  (role: UserRole | undefined) => {
+    if (!role) {
+      side.value = ''
+      return
+    }
+
+    const sides = ROLE_ALLOWED_SIDES[role]
+    if (sides.length > 0) {
+      side.value = sides[0]
+    }
+  },
+  { immediate: true }
+)
+
+// Watch user changes for debugging
+watch(
+  () => user.value,
+  (u) => {
+    console.log('user changed:', u)
+  },
+  { immediate: true }
+)
+
 
 async function handlePlaceOrder() {
   message.value = ''
   isError.value = false
   loading.value = true
+
+  if (!side.value) {
+    message.value = '买卖方向非法'
+    isError.value = true
+    loading.value = false
+    return
+  }
 
   try {
     const response = await api.post('/api/orders', {
