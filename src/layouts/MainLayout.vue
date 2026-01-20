@@ -2,8 +2,8 @@
   <div class="layout">
     <header class="header">
       <nav class="nav">
-        <RouterLink to="/place-order">下单</RouterLink>
         <RouterLink to="/orders">当前订单</RouterLink>
+        <RouterLink to="/place-order">下单</RouterLink>
         <RouterLink to="/me">我的账户</RouterLink>
       </nav>
     </header>

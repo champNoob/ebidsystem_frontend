@@ -1,7 +1,7 @@
 <template>
   <div class="login-container">
     <h2>证券交易系统登录</h2>
-
+    <!-- 登录表单 -->
     <form @submit.prevent="handleLogin">
       <div class="form-item">
         <label>用户名</label>
@@ -21,6 +21,12 @@
         {{ loading ? '登录中...' : '登录' }}
       </button>
     </form>
+    <!-- 底部注册按钮 -->
+    <div class="footer">
+      还没有账号？
+      <router-link to="/register">注册</router-link>
+    </div>
+
   </div>
 </template>
 
