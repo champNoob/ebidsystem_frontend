@@ -84,12 +84,21 @@ MainLayout    → /orders /place-order /me
 * 业务页共享导航与框架
 * 路由负责“区域切换”，不是组件自己判断
 
-### ⚠️ 坑点（你已经踩过并理解了）
+### ⚠️ 坑点
 
 * 把导航写在 App.vue → 导致登录页“泄露”
 * 用 v-if 控制显示 → 不如结构上隔离
 
-## 5：下单页实现（你开始体现“金融系统意识”）
+## 5：登录页与注册页实现
+
+- `LoginView.vue`（登录，`/login`）
+- `RegisterView.vue`（注册，`/register`）
+
+两个界面可以互相跳转
+
+未登录访问时，默认重定向到 `/login`，而不是 `/register`
+
+## 6：下单页实现
 
 ### ✅ 正确操作
 
@@ -131,7 +140,7 @@ ROLE_ALLOWED_SIDES = {
 * 不要把它当成“权限控制”
 * 不要写死在模板里
 
-## 6：当前订单页（状态驱动 UI）
+## 7：当前订单页（状态驱动 UI）
 
 ### ✅ 正确操作
 
@@ -166,3 +175,6 @@ v-if="order.status === 'pending' || order.status === 'partial'"
 - 当前订单 vs 历史订单（仅前端区分）：不改后端，也能体现业务深度
 
 - 表单 / 表格 UI 微优化：spacing、hover、disabled 状态
+
+## 8：
+

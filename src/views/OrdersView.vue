@@ -1,6 +1,17 @@
 <template>
   <div class="orders-container">
-    <h2>当前订单</h2>
+    <h2>{{ title }}</h2>
+
+    <div class="filter-bar">
+      <label>
+        订单类型：
+        <select v-model="statusFilter" @change="fetchOrders">
+          <option value="current">当前订单</option>
+          <option value="history">历史订单</option>
+          <option value="all">全部订单</option>
+        </select>
+      </label>
+    </div>
 
     <table>
       <thead>
@@ -43,8 +54,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import api from '@/api/axios'
+
+type OrderView = 'current' | 'history' | 'all'
 
 interface Order {
   id: number
@@ -58,11 +71,19 @@ interface Order {
 
 const orders = ref<Order[]>([])
 const error = ref('')
+const statusFilter = ref<'current' | 'history'>('current')
+const title = computed(() =>
+  statusFilter.value === 'current' ? '当前订单' : '历史订单'
+)
 
 async function fetchOrders() {
   error.value = ''
   try {
-    const res = await api.get('/api/orders')
+    const res = await api.get('/api/orders', {
+      params: {
+        status: statusFilter.value
+      }
+    })
     orders.value = res.data
   } catch (e: any) {
     error.value = e?.response?.data?.error || '获取订单失败'
