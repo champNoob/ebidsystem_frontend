@@ -71,9 +71,17 @@ async function handleRegister() {
     setTimeout(() => {
       router.push('/login')
     }, 800)
-  } catch (err: any) {
-    message.value =
-      err?.response?.data?.error || '注册失败'
+  }  catch (err: any) {
+    // 显示后端返回的自定义错误消息：
+    if (err?.response?.data) {
+      // 兼容不同后端字段：
+      message.value =
+        err.response.data.error ||
+        err.response.data.message ||
+        '注册失败'
+    } else {
+      message.value = '注册失败'
+    }
     isError.value = true
   } finally {
     loading.value = false
