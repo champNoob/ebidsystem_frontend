@@ -129,9 +129,9 @@ MainLayout    → /orders /place-order /me
 
 ```ts
 ROLE_ALLOWED_SIDES = {
-  client: ['BUY'],
-  seller: ['SELL'],
-  trader: ['BUY', 'SELL'],
+  client: ['buy'],
+  seller: ['sell'],
+  trader: ['buy', 'sell'],
 }
 ```
 
