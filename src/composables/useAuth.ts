@@ -1,4 +1,5 @@
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { loginApi, LoginRequest } from '@/api/auth.api'
 import api from '@/api/axios'
 
@@ -22,10 +23,18 @@ async function login(username: string, password: string) {
   await fetchMe() //登录成功后，立即拉取用户信息
 }
 
-function logout() {
-  localStorage.removeItem(TOKEN_KEY)
-  token.value = null
-  user.value = null
+function useLogoutLogic() {
+  const router = useRouter()
+
+  return function logout() {
+    // 删除 token：
+    localStorage.removeItem(TOKEN_KEY)
+    token.value = null
+    // 清空用户信息：
+    user.value = null
+    // 强制跳转到登录页：
+    router.push('/login')
+  }
 }
 
 async function fetchMe() {
@@ -37,7 +46,9 @@ async function fetchMe() {
     user.value = res.data
   } catch (err) {
     // token 失效或后端异常，直接清理
-    logout()
+    localStorage.removeItem(TOKEN_KEY)
+    token.value = null
+    user.value = null
     throw err
   } finally {
     loadingMe.value = false
@@ -46,6 +57,8 @@ async function fetchMe() {
 
 
 export function useAuth() {
+  const logout = useLogoutLogic()
+
   return { 
     // state:
     token,
