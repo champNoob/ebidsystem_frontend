@@ -52,8 +52,11 @@ async function handleLogin() {
     router.push('/orders') // 登录成功跳转下单页
   } catch (err: any) {
     // 显示后端返回的错误，如果没有，则显示默认
-    if (err?.response?.data?.error) {
-      errorMessage.value = err.response.data.error
+    if (err?.response?.data) {
+      errorMessage.value =
+        err.response.data.error ||
+        err.response.data.message ||
+        '登录失败，请检查用户名或密码'
     } else {
       errorMessage.value = '登录失败，请检查用户名或密码'
     }

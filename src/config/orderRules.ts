@@ -13,6 +13,6 @@ export const ROLE_ALLOWED_SIDES: Record<UserRole, OrderSide[]> = {
   client: ['buy'],
   seller: ['sell'],
   trader: ['buy', 'sell'],
-  sales: ['buy', 'sell'],
-  admin: ['buy', 'sell'],
+  sales: [],
+  admin: [],
 }

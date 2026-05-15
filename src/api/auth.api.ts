@@ -18,7 +18,7 @@ export function loginApi(data: LoginRequest) {
 export interface MeResponse {
   id: number
   username: string
-  role: 'client' | 'trader' | 'seller' | 'admin'
+  role: 'client' | 'seller' | 'sales' | 'trader' | 'admin'
 }
 
 export function getCurrentUser() {

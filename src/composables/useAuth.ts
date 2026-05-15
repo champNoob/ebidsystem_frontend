@@ -2,10 +2,9 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { loginApi, LoginRequest } from '@/api/auth.api'
 import api from '@/api/axios'
+import { getToken, setToken, removeToken } from '@/utils/storage'
 
-const TOKEN_KEY = 'token'
-
-const token = ref<string | null>(localStorage.getItem(TOKEN_KEY))
+const token = ref<string | null>(getToken())
 const user = ref<any | null>(null)
 const loadingMe = ref(false)
 const isAuthenticated = computed(() => !!token.value)
@@ -17,7 +16,7 @@ async function login(username: string, password: string) {
     throw new Error('登录失败，未获取 token')
   }
 
-  localStorage.setItem(TOKEN_KEY, jwt)
+  setToken(jwt)
   token.value = jwt
 
   await fetchMe() //登录成功后，立即拉取用户信息
@@ -28,7 +27,7 @@ function useLogoutLogic() {
 
   return function logout() {
     // 删除 token：
-    localStorage.removeItem(TOKEN_KEY)
+    removeToken()
     token.value = null
     // 清空用户信息：
     user.value = null
@@ -46,7 +45,7 @@ async function fetchMe() {
     user.value = res.data
   } catch (err) {
     // token 失效或后端异常，直接清理
-    localStorage.removeItem(TOKEN_KEY)
+    removeToken()
     token.value = null
     user.value = null
     throw err

@@ -71,10 +71,12 @@ interface Order {
 
 const orders = ref<Order[]>([])
 const error = ref('')
-const statusFilter = ref<'current' | 'history'>('current')
-const title = computed(() =>
-  statusFilter.value === 'current' ? '当前订单' : '历史订单'
-)
+const statusFilter = ref<'current' | 'history' | 'all'>('current')
+const title = computed(() => {
+  if (statusFilter.value === 'current') return '当前订单'
+  if (statusFilter.value === 'history') return '历史订单'
+  return '全部订单'
+})
 
 async function fetchOrders() {
   error.value = ''

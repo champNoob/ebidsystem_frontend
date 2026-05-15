@@ -47,7 +47,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { loginApi, LoginRequest } from '@/api/auth.api'
+import { loginApi, LoginRequest } from '@/api/auth.api' //#
 import api from '@/api/axios' // Axios 已封装自动带 token
 import { useAuth } from '@/composables/useAuth'
 import { ROLE_ALLOWED_SIDES, ORDER_SIDE_LABEL } from '@/config/orderRules'
@@ -92,7 +92,7 @@ watch(
 watch(
   () => user.value,
   (u) => {
-    console.log('user changed:', u)
+    console.log('user changed:', u) //#
   },
   { immediate: true }
 )
