@@ -33,10 +33,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { getApiErrorMessage } from '@/api/axios'
 import { useAuth } from '@/composables/useAuth'
 
 const router = useRouter()
-const { login } = useAuth()
+const { login, currentRole } = useAuth()
 
 const username = ref('')
 const password = ref('')
@@ -49,7 +50,8 @@ async function handleLogin() {
 
   try {
     await login(username.value, password.value)
-    router.push('/orders') // 登录成功跳转下单页
+    // 登录成功则跳转：
+    await router.push(currentRole.value === 'admin' ? '/admin/dashboard' : currentRole.value === 'sales' ? '/me' : '/orders')
   } catch (err: any) {
     // 显示后端返回的错误，如果没有，则显示默认
     if (err?.response?.data) {
@@ -58,7 +60,7 @@ async function handleLogin() {
         err.response.data.message ||
         '登录失败，请检查用户名或密码'
     } else {
-      errorMessage.value = '登录失败，请检查用户名或密码'
+      errorMessage.value = getApiErrorMessage(err, '登录失败，请检查用户名或密码')
     }
   } finally {
     loading.value = false
@@ -68,15 +70,63 @@ async function handleLogin() {
 
 <style scoped>
 .login-container {
-  max-width: 360px;
-  margin: 100px auto;
-  padding: 24px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  width: 360px;
+  padding: 28px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
 }
-.form-item { margin-bottom: 16px; }
-.form-item label { display: block; margin-bottom: 4px; font-size: 14px; }
-.form-item input { width: 100%; padding: 6px 8px; box-sizing: border-box; }
-button { width: 100%; padding: 8px; }
-.error { margin-bottom: 12px; color: red; font-size: 14px; }
+
+h2 {
+  margin: 0 0 22px;
+  color: #0f172a;
+  text-align: center;
+}
+
+.form-item {
+  margin-bottom: 16px;
+}
+
+.form-item label {
+  display: block;
+  margin-bottom: 6px;
+  color: #334155;
+  font-size: 14px;
+}
+
+.form-item input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.error {
+  margin-bottom: 12px;
+  color: #dc2626;
+  font-size: 14px;
+}
+
+.footer {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 14px;
+}
 </style>

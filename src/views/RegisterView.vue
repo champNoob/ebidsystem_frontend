@@ -22,7 +22,7 @@
         </select>
       </div>
 
-      <div v-if="message" :class="{ error: isError }">
+      <div v-if="message" :class="{ error: isError, success: !isError }">
         {{ message }}
       </div>
 
@@ -41,6 +41,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { getApiErrorMessage } from '@/api/axios'
 import { registerApi } from '@/api/user.api'
 
 const router = useRouter()
@@ -71,17 +72,8 @@ async function handleRegister() {
     setTimeout(() => {
       router.push('/login')
     }, 800)
-  }  catch (err: any) {
-    // 显示后端返回的自定义错误消息：
-    if (err?.response?.data) {
-      // 兼容不同后端字段：
-      message.value =
-        err.response.data.error ||
-        err.response.data.message ||
-        '注册失败'
-    } else {
-      message.value = '注册失败'
-    }
+  }  catch (err) {
+    message.value = getApiErrorMessage(err, '注册失败')
     isError.value = true
   } finally {
     loading.value = false
@@ -91,11 +83,18 @@ async function handleRegister() {
 
 <style scoped>
 .register-container {
-  max-width: 400px;
-  margin: 60px auto;
-  padding: 24px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+  width: 400px;
+  padding: 28px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
+}
+
+h2 {
+  margin: 0 0 22px;
+  color: #0f172a;
+  text-align: center;
 }
 
 .form-item {
@@ -104,26 +103,52 @@ async function handleRegister() {
 
 label {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  color: #334155;
+  font-size: 14px;
 }
 
-input, select {
+input,
+select {
   width: 100%;
-  padding: 6px;
+  box-sizing: border-box;
+  padding: 9px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
 }
 
 button {
   width: 100%;
-  padding: 8px;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.error,
+.success {
+  margin-bottom: 12px;
+  font-size: 14px;
 }
 
 .error {
-  color: red;
-  margin-top: 8px;
+  color: #dc2626;
+}
+
+.success {
+  color: #16a34a;
 }
 
 .footer {
   margin-top: 16px;
   text-align: center;
+  font-size: 14px;
 }
 </style>

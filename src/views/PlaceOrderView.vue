@@ -1,44 +1,55 @@
 <template>
-  <div class="order-container">
-    <h2>下单页</h2>
+  <div class="page-card order-page">
+    <div class="page-header">
+      <div>
+        <h2>正式下单</h2>
+        <p>当前仅支持限价单，成交与权限合法性最终由后端判定。</p>
+      </div>
+    </div>
 
-    <form @submit.prevent="handlePlaceOrder">
+    <div v-if="!canSubmitFormalOrder" class="warning-box">
+      当前角色不能提交正式订单。sales 只能使用订单草稿模块；admin 不直接提交正式订单。
+    </div>
+
+    <form v-else @submit.prevent="handlePlaceOrder" class="order-form">
       <div class="form-item">
         <label>股票代码</label>
-        <input v-model="symbol" type="text" placeholder="如 AAPL" required />
+        <input v-model.trim="symbol" type="text" placeholder="如 AAPL" required />
+      </div>
+
+      <div class="form-item">
+        <label>订单类型</label>
+        <select v-model="orderType" disabled>
+          <option value="limit">限价单</option>
+        </select>
+        <small>后端当前只支持限价单，市价单暂不开放。</small>
       </div>
 
       <div class="form-item">
         <label>买卖方向</label>
         <select v-model="side" required>
-          <option disabled value="">
-            请选择买卖方向
-          </option>
-          <option
-            v-for="s in allowedSides"
-            :key="s"
-            :value="s"
-          >
-            {{ ORDER_SIDE_LABEL[s] }}
+          <option disabled value="">请选择买卖方向</option>
+          <option v-for="item in allowedSides" :key="item" :value="item">
+            {{ ORDER_SIDE_LABEL[item] }}
           </option>
         </select>
       </div>
 
       <div class="form-item">
-        <label>价格（限价单）</label>
-        <input v-model.number="price" type="number" step="0.01" required />
+        <label>价格</label>
+        <input v-model.number="price" type="number" min="0.01" step="0.01" required />
       </div>
 
       <div class="form-item">
         <label>数量</label>
-        <input v-model.number="quantity" type="number" min="1" required />
+        <input v-model.number="quantity" type="number" min="1" step="1" required />
       </div>
 
-      <div v-if="message" :class="{'error': isError, 'success': !isError}">
+      <div v-if="message" :class="{ error: isError, success: !isError }">
         {{ message }}
       </div>
 
-      <button type="submit" :disabled="loading">
+      <button type="submit" :disabled="loading || !side">
         {{ loading ? '提交中...' : '提交订单' }}
       </button>
     </form>
@@ -46,83 +57,75 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { loginApi, LoginRequest } from '@/api/auth.api' //#
-import api from '@/api/axios' // Axios 已封装自动带 token
+import { computed, ref, watch } from 'vue'
+import { getApiErrorMessage } from '@/api/axios'
+import { createOrder } from '@/api/order.api'
 import { useAuth } from '@/composables/useAuth'
-import { ROLE_ALLOWED_SIDES, ORDER_SIDE_LABEL } from '@/config/orderRules'
-import type { OrderSide, UserRole } from '@/config/orderRules'
+import { canPlaceFormalOrder, getAllowedSides, ORDER_SIDE_LABEL } from '@/config/orderRules'
+import type { OrderSide, OrderType } from '@/types/order'
 
-const { user } = useAuth()
+const { currentRole } = useAuth()
 
 const symbol = ref('')
+const orderType = ref<OrderType>('limit')
 const side = ref<OrderSide | ''>('')
 const price = ref<number | null>(null)
 const quantity = ref<number | null>(null)
-
 const loading = ref(false)
 const message = ref('')
 const isError = ref(false)
 
-// 根据用户角色计算允许的买卖方向
-const allowedSides = computed<OrderSide[]>(() => {
-  const role = user.value?.role as UserRole | undefined
-  if (!role) return []
-  return ROLE_ALLOWED_SIDES[role] || []
-})
+const allowedSides = computed(() => getAllowedSides(currentRole.value))
+const canSubmitFormalOrder = computed(() => canPlaceFormalOrder(currentRole.value))
 
-// 当角色或 allowedSides 变化时，自动修正 side
 watch(
-  () => user.value?.role,
-  (role: UserRole | undefined) => {
-    if (!role) {
+  allowedSides,
+  (sides) => {
+    if (sides.length === 0) {
       side.value = ''
       return
     }
 
-    const sides = ROLE_ALLOWED_SIDES[role]
-    if (sides.length > 0) {
+    if (!side.value || !sides.includes(side.value)) {
       side.value = sides[0]
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
-
-// Watch user changes for debugging
-watch(
-  () => user.value,
-  (u) => {
-    console.log('user changed:', u) //#
-  },
-  { immediate: true }
-)
-
 
 async function handlePlaceOrder() {
   message.value = ''
   isError.value = false
-  loading.value = true
 
-  if (!side.value) {
-    message.value = '买卖方向非法'
+  if (!side.value || !canSubmitFormalOrder.value) {
+    message.value = '当前角色不允许提交该方向的正式订单'
     isError.value = true
-    loading.value = false
     return
   }
 
+  if (price.value === null || quantity.value === null) {
+    message.value = '价格和数量不能为空'
+    isError.value = true
+    return
+  }
+
+  loading.value = true
   try {
-    const response = await api.post('/api/orders', {
-      type: "limit",
+    const response = await createOrder({
       symbol: symbol.value,
+      type: orderType.value,
       side: side.value,
       price: price.value,
       quantity: quantity.value,
     })
+
     message.value = response.data.message || '下单成功'
     isError.value = false
-  } catch (err: any) {
-    message.value =
-      err?.response?.data?.error || '下单失败，请稍后重试'
+    symbol.value = ''
+    price.value = null
+    quantity.value = null
+  } catch (error) {
+    message.value = getApiErrorMessage(error, '下单失败')
     isError.value = true
   } finally {
     loading.value = false
@@ -131,20 +134,87 @@ async function handlePlaceOrder() {
 </script>
 
 <style scoped>
-.order-container {
-  max-width: 400px;
-  margin: 50px auto;
-  padding: 20px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+.order-page {
+  max-width: 560px;
 }
 
-.form-item { margin-bottom: 16px; }
-.form-item label { display: block; margin-bottom: 4px; font-size: 14px; }
-.form-item input, .form-item select { width: 100%; padding: 6px 8px; box-sizing: border-box; }
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
 
-button { width: 100%; padding: 8px; }
+h2 {
+  margin: 0;
+  color: #0f172a;
+}
 
-.success { color: green; margin-bottom: 12px; }
-.error { color: red; margin-bottom: 12px; }
+p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.order-form {
+  display: grid;
+  gap: 16px;
+}
+
+.form-item label {
+  display: block;
+  margin-bottom: 6px;
+  color: #334155;
+  font-size: 14px;
+}
+
+.form-item input,
+.form-item select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+}
+
+.form-item small {
+  display: block;
+  margin-top: 4px;
+  color: #94a3b8;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.warning-box {
+  padding: 14px;
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.error,
+.success {
+  font-size: 14px;
+}
+
+.error {
+  color: #dc2626;
+}
+
+.success {
+  color: #16a34a;
+}
 </style>

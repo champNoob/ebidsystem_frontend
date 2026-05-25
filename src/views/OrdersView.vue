@@ -1,17 +1,25 @@
 <template>
-  <div class="orders-container">
-    <h2>{{ title }}</h2>
+  <div class="page-card orders-container">
+    <div class="page-header">
+      <div>
+        <h2>订单查询</h2>
+        <p>普通用户仅能看到自己的订单；管理员请使用后台订单管理模块。</p>
+      </div>
+      <button @click="fetchOrders" :disabled="loading">刷新</button>
+    </div>
 
     <div class="filter-bar">
       <label>
         订单类型：
-        <select v-model="statusFilter" @change="fetchOrders">
+        <select v-model="scope">
           <option value="current">当前订单</option>
           <option value="history">历史订单</option>
           <option value="all">全部订单</option>
         </select>
       </label>
     </div>
+
+    <div v-if="error" class="error">{{ error }}</div>
 
     <table>
       <thead>
@@ -28,7 +36,10 @@
       </thead>
 
       <tbody>
-        <tr v-for="order in orders" :key="order.id">
+        <tr v-if="filteredOrders.length === 0">
+          <td colspan="8" class="empty">暂无订单</td>
+        </tr>
+        <tr v-for="order in filteredOrders" :key="order.id">
           <td>{{ order.id }}</td>
           <td>{{ order.symbol }}</td>
           <td>{{ order.side }}</td>
@@ -38,8 +49,9 @@
           <td>{{ order.status }}</td>
           <td>
             <button
-              v-if="order.status === 'pending' || order.status === 'partial'"
-              @click="cancelOrder(order.id)"
+              v-if="canCancel(order.status)"
+              class="small-button danger"
+              @click="handleCancelOrder(order.id)"
             >
               撤单
             </button>
@@ -48,56 +60,52 @@
         </tr>
       </tbody>
     </table>
-
-    <div v-if="error" class="error">{{ error }}</div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import api from '@/api/axios'
-
-type OrderView = 'current' | 'history' | 'all'
-
-interface Order {
-  id: number
-  symbol: string
-  side: 'buy' | 'sell'
-  price: number
-  quantity: number
-  filled_quantity: number
-  status: 'pending' | 'partial' | 'filled' | 'cancelled'
-}
+import { computed, onMounted, ref } from 'vue'
+import { getApiErrorMessage } from '@/api/axios'
+import { cancelOrder, getOrders } from '@/api/order.api'
+import type { Order, OrderScope, OrderStatus } from '@/types/order'
 
 const orders = ref<Order[]>([])
+const scope = ref<OrderScope>('current')
+const loading = ref(false)
 const error = ref('')
-const statusFilter = ref<'current' | 'history' | 'all'>('current')
-const title = computed(() => {
-  if (statusFilter.value === 'current') return '当前订单'
-  if (statusFilter.value === 'history') return '历史订单'
-  return '全部订单'
+
+const currentStatuses: OrderStatus[] = ['pending', 'partial']
+const historyStatuses: OrderStatus[] = ['filled', 'cancelled']
+
+const filteredOrders = computed(() => {
+  if (scope.value === 'all') return orders.value
+  const accepted = scope.value === 'current' ? currentStatuses : historyStatuses
+  return orders.value.filter((order) => accepted.includes(order.status))
 })
+
+function canCancel(status: OrderStatus) {
+  return status === 'pending' || status === 'partial'
+}
 
 async function fetchOrders() {
   error.value = ''
+  loading.value = true
   try {
-    const res = await api.get('/api/orders', {
-      params: {
-        status: statusFilter.value
-      }
-    })
-    orders.value = res.data
-  } catch (e: any) {
-    error.value = e?.response?.data?.error || '获取订单失败'
+    const response = await getOrders()
+    orders.value = response.data
+  } catch (requestError) {
+    error.value = getApiErrorMessage(requestError, '获取订单失败')
+  } finally {
+    loading.value = false
   }
 }
 
-async function cancelOrder(id: number) {
+async function handleCancelOrder(id: number) {
   try {
-    await api.post(`/api/orders/${id}/cancel`)
+    await cancelOrder(id)
     await fetchOrders()
-  } catch (e: any) {
-    alert(e?.response?.data?.error || '撤单失败')
+  } catch (requestError) {
+    window.alert(getApiErrorMessage(requestError, '撤单失败'))
   }
 }
 
@@ -106,26 +114,82 @@ onMounted(fetchOrders)
 
 <style scoped>
 .orders-container {
-  padding: 20px;
+  overflow-x: auto;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+h2 {
+  margin: 0;
+  color: #0f172a;
+}
+
+p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.filter-bar {
+  margin-bottom: 16px;
+}
+
+select {
+  padding: 7px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
+  background: #ffffff;
 }
 
-th, td {
-  border: 1px solid #ccc;
-  padding: 6px;
+th,
+td {
+  border-bottom: 1px solid #e5e7eb;
+  padding: 10px 8px;
   text-align: center;
+  font-size: 14px;
+}
+
+th {
+  background: #f8fafc;
+  color: #334155;
 }
 
 button {
-  padding: 4px 8px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.small-button {
+  padding: 5px 9px;
+  font-size: 13px;
+}
+
+.danger {
+  background: #dc2626;
 }
 
 .error {
-  margin-top: 12px;
-  color: red;
+  margin-bottom: 12px;
+  color: #dc2626;
+}
+
+.empty {
+  padding: 28px;
+  color: #94a3b8;
 }
 </style>

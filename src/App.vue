@@ -1,29 +1,21 @@
-<script setup lang="ts">
-import { useAuth } from '@/composables/useAuth'
-
-const { user } = useAuth()
-</script>
-
 <template>
-  <div>
-    <div v-if="user">
-      当前用户：{{ user.username }}（{{ user.role }}）
-    </div>
-    <router-view />
-  </div>
+  <RouterView :key="route.fullPath" />
 </template>
 
-<style scoped>
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #42b883aa);
-}
-</style>
+<script setup lang="ts">
+import { watch } from 'vue'
+import { RouterView, useRoute, useRouter } from 'vue-router'
+import { useAuth } from '@/composables/useAuth'
+
+const router = useRouter()
+const route = useRoute()
+const { isAuthenticated } = useAuth()
+
+const publicPaths = ['/login', '/register']
+
+watch(isAuthenticated, (loggedIn) => {
+  if (!loggedIn && !publicPaths.includes(route.path)) {
+    router.replace('/login')
+  }
+})
+</script>

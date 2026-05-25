@@ -1,16 +1,19 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { loginApi, LoginRequest } from '@/api/auth.api'
-import api from '@/api/axios'
+import { loginApi, getCurrentUser } from '@/api/auth.api'
+import { onAuthStateCleared } from '@/utils/authEvents'
 import { getToken, setToken, removeToken } from '@/utils/storage'
+import type { CurrentUser, LoginRequest, UserRole } from '@/types/auth'
 
 const token = ref<string | null>(getToken())
-const user = ref<any | null>(null)
+const user = ref<CurrentUser | null>(null)
 const loadingMe = ref(false)
 const isAuthenticated = computed(() => !!token.value)
+const currentRole = computed<UserRole | undefined>(() => user.value?.role)
 
 async function login(username: string, password: string) {
-  const response = await loginApi({ username, password } as LoginRequest)
+  const payload: LoginRequest = { username, password }
+  const response = await loginApi(payload)
   const jwt = response.data.token
   if (!jwt) {
     throw new Error('登录失败，未获取 token')
@@ -22,32 +25,31 @@ async function login(username: string, password: string) {
   await fetchMe() //登录成功后，立即拉取用户信息
 }
 
-function useLogoutLogic() {
-  const router = useRouter()
-
-  return function logout() {
-    // 删除 token：
-    removeToken()
-    token.value = null
-    // 清空用户信息：
-    user.value = null
-    // 强制跳转到登录页：
-    router.push('/login')
-  }
+function clearAuthState() {
+  removeToken() //token失效或后端异常，直接清理
+  token.value = null
+  user.value = null //清空用户信息
 }
+
+onAuthStateCleared(clearAuthState)
+
+function logout() {
+  clearAuthState()
+  useRouter().push('/login') //# 强制跳转到登录页
+}
+
+
 
 async function fetchMe() {
   if (!token.value) return
 
   loadingMe.value = true
   try {
-    const res = await api.get('/api/me')
+    const res = await getCurrentUser()
     user.value = res.data
+    return res.data
   } catch (err) {
-    // token 失效或后端异常，直接清理
-    removeToken()
-    token.value = null
-    user.value = null
+    clearAuthState()
     throw err
   } finally {
     loadingMe.value = false
@@ -56,8 +58,6 @@ async function fetchMe() {
 
 
 export function useAuth() {
-  const logout = useLogoutLogic()
-
   return { 
     // state:
     token,
@@ -65,9 +65,11 @@ export function useAuth() {
     loadingMe,
     // computed:
     isAuthenticated,
+    currentRole,
     // actions:
     login,
     logout,
     fetchMe,
+    clearAuthState,
   }
 }
