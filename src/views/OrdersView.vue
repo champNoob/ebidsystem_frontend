@@ -19,7 +19,10 @@
       </label>
     </div>
 
-    <div v-if="error" class="error">{{ error }}</div>
+    <div v-if="error" class="notice error">{{ error }}</div>
+    <div v-if="actionMessage" :class="['notice', actionIsError ? 'error' : 'success']">
+      {{ actionMessage }}
+    </div>
 
     <table>
       <thead>
@@ -73,6 +76,8 @@ const orders = ref<Order[]>([])
 const scope = ref<OrderScope>('current')
 const loading = ref(false)
 const error = ref('')
+const actionMessage = ref('')
+const actionIsError = ref(false)
 
 const currentStatuses: OrderStatus[] = ['pending', 'partial']
 const historyStatuses: OrderStatus[] = ['filled', 'cancelled']
@@ -101,11 +106,16 @@ async function fetchOrders() {
 }
 
 async function handleCancelOrder(id: number) {
+  actionMessage.value = ''
+  actionIsError.value = false
+
   try {
     await cancelOrder(id)
+    actionMessage.value = '撤单请求已提交，订单列表已刷新。'
     await fetchOrders()
   } catch (requestError) {
-    window.alert(getApiErrorMessage(requestError, '撤单失败'))
+    actionMessage.value = getApiErrorMessage(requestError, '撤单失败')
+    actionIsError.value = true
   }
 }
 
@@ -187,6 +197,13 @@ button {
   margin-bottom: 12px;
   color: #dc2626;
 }
+
+.success {
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #15803d;
+}
+
 
 .empty {
   padding: 28px;

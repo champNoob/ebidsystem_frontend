@@ -58,6 +58,141 @@ const userRoleStats = ref<UserRoleStat[]>([])
 const userRanking = ref<UserRankingItem[]>([])
 const tradeTimeline = ref<TradeTimelineItem[]>([])
 
+const ORDER_STATUS_LABEL: Record<string, string> = {
+  pending: 'pending（待成交）',
+  partial: 'partial（部分成交）',
+  filled: 'filled（已成交）',
+  cancelled: 'cancelled（已撤销）',
+}
+
+const USER_ROLE_LABEL: Record<string, string> = {
+  client: 'client（客户）',
+  seller: 'seller（卖方）',
+  trader: 'trader（交易员）',
+  sales: 'sales（销售）',
+  admin: 'admin（管理员）',
+}
+
+function unwrapArray(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value
+  if (value && typeof value === 'object') {
+    const obj = value as Record<string, unknown>
+    for (const key of ['data', 'items', 'list', 'records', 'rows', 'result']) {
+      if (Array.isArray(obj[key])) return obj[key] as unknown[]
+    }
+  }
+  return []
+}
+
+function toNumber(...values: unknown[]): number {
+  for (const value of values) {
+    if (typeof value === 'number' && Number.isFinite(value)) return value
+    if (typeof value === 'string' && value.trim() !== '') {
+      const parsed = Number(value)
+      if (Number.isFinite(parsed)) return parsed
+    }
+  }
+  return 0
+}
+
+function toStringValue(...values: unknown[]): string {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim() !== '') return value
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value)
+  }
+  return '-'
+}
+
+function normalizeSummary(raw: unknown): AdminDashboardSummary {
+  const obj = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {}
+  return {
+    total_orders: toNumber(obj.total_orders, obj.totalOrders, obj.orders),
+    total_trades: toNumber(obj.total_trades, obj.totalTrades, obj.trades),
+    total_volume: toNumber(obj.total_volume, obj.totalVolume, obj.volume),
+    total_turnover: toNumber(obj.total_turnover, obj.totalTurnover, obj.turnover),
+  }
+}
+
+function normalizeSymbolStats(raw: unknown): SymbolStat[] {
+  return unwrapArray(raw).map((item) => {
+    const obj = item && typeof item === 'object' ? item as Record<string, unknown> : {}
+    return {
+      symbol: toStringValue(obj.symbol, obj.stock_symbol),
+      volume: toNumber(obj.volume, obj.total_volume, obj.totalVolume, obj.quantity, obj.total_quantity),
+      turnover: toNumber(obj.turnover, obj.total_turnover, obj.totalTurnover, obj.amount),
+    }
+  }).filter((item) => item.symbol !== '-')
+}
+
+function normalizeOrderStatusStats(raw: unknown): OrderStatusStat[] {
+  const statusCounts: Record<string, number> = {
+    pending: 0,
+    partial: 0,
+    filled: 0,
+    cancelled: 0,
+  }
+
+  for (const item of unwrapArray(raw)) {
+    const obj = item && typeof item === 'object' ? item as Record<string, unknown> : {}
+    const status = toStringValue(obj.status, obj.order_status)
+    if (status !== '-') {
+      statusCounts[status] = toNumber(obj.count, obj.total, obj.value)
+    }
+  }
+
+  return Object.entries(statusCounts).map(([status, count]) => ({ status, count }))
+}
+
+function normalizeUserRoleStats(raw: unknown): UserRoleStat[] {
+  const roleCounts: Record<string, number> = {
+    client: 0,
+    seller: 0,
+    trader: 0,
+    sales: 0,
+    admin: 0,
+  }
+
+  for (const item of unwrapArray(raw)) {
+    const obj = item && typeof item === 'object' ? item as Record<string, unknown> : {}
+    const role = toStringValue(obj.role, obj.user_role)
+    if (role !== '-') {
+      roleCounts[role] = toNumber(obj.count, obj.total, obj.value)
+    }
+  }
+
+  return Object.entries(roleCounts).map(([role, count]) => ({ role, count }))
+}
+
+function normalizeUserRanking(raw: unknown): UserRankingItem[] {
+  return unwrapArray(raw).map((item) => {
+    const obj = item && typeof item === 'object' ? item as Record<string, unknown> : {}
+    return {
+      user_id: toNumber(obj.user_id, obj.userID, obj.id) || undefined,
+      username: toStringValue(obj.username, obj.user_name, obj.name),
+      total_volume: toNumber(
+        obj.total_volume,
+        obj.totalVolume,
+        obj.trade_volume,
+        obj.volume,
+        obj.total_quantity,
+        obj.quantity,
+      ),
+    }
+  }).filter((item) => item.username || item.user_id)
+}
+
+function normalizeTradeTimeline(raw: unknown): TradeTimelineItem[] {
+  return unwrapArray(raw).map((item) => {
+    const obj = item && typeof item === 'object' ? item as Record<string, unknown> : {}
+    return {
+      time_bucket: toStringValue(obj.time_bucket, obj.timeBucket, obj.bucket, obj.date, obj.time, obj.created_at),
+      trades: toNumber(obj.trades, obj.trade_count, obj.count, obj.total_trades),
+      volume: toNumber(obj.volume, obj.total_volume, obj.totalVolume, obj.total_quantity, obj.quantity),
+      turnover: toNumber(obj.turnover, obj.total_turnover, obj.totalTurnover, obj.amount),
+    }
+  }).filter((item) => item.time_bucket !== '-')
+}
+
 const symbolVolumeItems = computed(() =>
   symbolStats.value.map((item) => ({ label: item.symbol, value: item.volume })),
 )
@@ -99,12 +234,12 @@ async function loadDashboard() {
       getTradeTimeline(),
     ])
 
-    summary.value = summaryRes.data
-    symbolStats.value = symbolRes.data
-    orderStatusStats.value = orderStatusRes.data
-    userRoleStats.value = userRoleRes.data
-    userRanking.value = rankingRes.data
-    tradeTimeline.value = timelineRes.data
+    summary.value = normalizeSummary(summaryRes.data)
+    symbolStats.value = normalizeSymbolStats(symbolRes.data)
+    orderStatusStats.value = normalizeOrderStatusStats(orderStatusRes.data)
+    userRoleStats.value = normalizeUserRoleStats(userRoleRes.data)
+    userRanking.value = normalizeUserRanking(rankingRes.data)
+    tradeTimeline.value = normalizeTradeTimeline(timelineRes.data)
   } catch (requestError) {
     error.value = getApiErrorMessage(requestError, '获取管理员看板数据失败')
   } finally {
@@ -123,13 +258,20 @@ onMounted(loadDashboard)
 
 .page-heading {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  gap: 16px;
 }
 
 h2 {
   margin: 0;
   color: #0f172a;
+}
+
+p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 14px;
 }
 
 button {
@@ -139,6 +281,11 @@ button {
   background: #2563eb;
   color: #ffffff;
   cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 .stat-grid {

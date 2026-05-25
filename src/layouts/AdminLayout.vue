@@ -2,10 +2,16 @@
   <div class="admin-layout">
     <aside class="admin-sidebar">
       <div class="admin-title">Admin Console</div>
-      <RouterLink to="/admin/dashboard">管理员看板</RouterLink>
-      <RouterLink to="/admin/users">用户管理</RouterLink>
-      <RouterLink to="/admin/orders">订单管理</RouterLink>
-      <RouterLink to="/admin/trades">成交管理</RouterLink>
+      <button
+        v-for="item in navItems"
+        :key="item.path"
+        type="button"
+        class="nav-button"
+        :class="{ active: route.path === item.path }"
+        @click="go(item.path)"
+      >
+        {{ item.label }}
+      </button>
     </aside>
 
     <section class="admin-main">
@@ -18,7 +24,9 @@
       </header>
 
       <main class="admin-content">
-        <RouterView :key="route.fullPath" />
+        <RouterView v-slot="{ Component }">
+          <component :is="Component" :key="route.fullPath" />
+        </RouterView>
       </main>
     </section>
   </div>
@@ -31,6 +39,19 @@ import { useAuth } from '@/composables/useAuth'
 const router = useRouter()
 const route = useRoute()
 const { user, logout } = useAuth()
+
+const navItems = [
+  { label: '管理员看板', path: '/admin/dashboard' },
+  { label: '用户管理', path: '/admin/users' },
+  { label: '订单管理', path: '/admin/orders' },
+  { label: '成交管理', path: '/admin/trades' },
+]
+
+async function go(path: string) {
+  if (route.path !== path) {
+    await router.push(path)
+  }
+}
 
 async function handleLogout() {
   logout()
@@ -58,16 +79,26 @@ async function handleLogout() {
   font-weight: 800;
 }
 
-.admin-sidebar a {
+.nav-button {
+  width: 100%;
   display: block;
   margin-bottom: 10px;
   padding: 11px 12px;
+  border: none;
   border-radius: 10px;
+  background: transparent;
   color: #cbd5e1;
+  text-align: left;
   text-decoration: none;
+  cursor: pointer;
 }
 
-.admin-sidebar a.router-link-active {
+.nav-button:hover {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.nav-button.active {
   background: #1d4ed8;
   color: #ffffff;
   font-weight: 700;

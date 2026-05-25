@@ -119,7 +119,9 @@ async function handlePlaceOrder() {
       quantity: quantity.value,
     })
 
-    message.value = response.data.message || '下单成功'
+    message.value = response.data.message === 'order created'
+      ? '订单创建成功，已提交至撮合系统。'
+      : response.data.message || '订单创建成功，已提交至撮合系统。'
     isError.value = false
     symbol.value = ''
     price.value = null
@@ -205,16 +207,17 @@ button:disabled {
   color: #9a3412;
 }
 
-.error,
-.success {
-  font-size: 14px;
-}
 
 .error {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
   color: #dc2626;
 }
 
 .success {
-  color: #16a34a;
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #15803d;
+  font-weight: 600;
 }
 </style>
