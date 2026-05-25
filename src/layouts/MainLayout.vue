@@ -18,7 +18,21 @@
       </aside>
 
       <main class="content">
-        <RouterView :key="route.fullPath" />
+        <RouterView v-slot="{ Component, route }">
+          <KeepAlive>
+            <component
+              v-if="route.meta.keepAlive"
+              :is="Component"
+              :key="route.name ?? route.path"
+            />
+          </KeepAlive>
+
+          <component
+            v-if="!route.meta.keepAlive"
+            :is="Component"
+            :key="route.fullPath"
+          />
+        </RouterView>
       </main>
     </div>
   </div>

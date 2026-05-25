@@ -3,7 +3,6 @@
     <div class="page-header">
       <div>
         <h2>订单查询</h2>
-        <p>普通用户仅能看到自己的订单；管理员请使用后台订单管理模块。</p>
       </div>
       <button @click="fetchOrders" :disabled="loading">刷新</button>
     </div>

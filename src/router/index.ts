@@ -37,9 +37,25 @@ const router = createRouter({
       component: MainLayout,
       children: [
         { path: '', redirect: '/orders' },
-        { path: 'me', component: MyAccountView },
-        { path: 'orders', component: OrdersView },
-        { path: 'place-order', component: PlaceOrderView },
+        {
+          path: 'me',
+          name: 'MyAccount',
+          component: MyAccountView,
+          meta: { keepAlive: true },
+        },
+        {
+          path: 'orders',
+          name: 'Orders',
+          component: OrdersView,
+          meta: { keepAlive: true },
+        },
+           
+        {
+          path: 'place-order',
+          name: 'PlaceOrder',
+          component: PlaceOrderView,
+          meta: { keepAlive: true },
+        },
       ],
     },
 
@@ -48,11 +64,29 @@ const router = createRouter({
       component: AdminLayout,
       children: [
         { path: '', redirect: '/admin/dashboard' },
-        { path: 'dashboard', component: AdminDashboardView },
-        { path: 'users', component: AdminUsersView },
+        {
+          path: 'dashboard',
+          name: 'AdminDashboard',
+          component: AdminDashboardView,
+        },
+        {
+          path: 'users',
+          name: 'AdminUsers',
+          component: AdminUsersView,
+          meta: { keepAlive: true },
+        },
         { path: 'users/:id', component: AdminUsersView },
-        { path: 'orders', component: AdminOrdersView },
-        { path: 'trades', component: AdminTradesView },
+        {
+          path: 'orders',
+          name: 'AdminOrders',
+          component: AdminOrdersView,
+          meta: { keepAlive: true },
+        },
+        {
+          path: 'trades',
+          name: 'AdminTrades',
+          component: AdminTradesView,
+        },
       ],
     },
   ],

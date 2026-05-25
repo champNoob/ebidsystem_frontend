@@ -24,8 +24,20 @@
       </header>
 
       <main class="admin-content">
-        <RouterView v-slot="{ Component }">
-          <component :is="Component" :key="route.fullPath" />
+        <RouterView v-slot="{ Component, route }">
+          <KeepAlive>
+            <component
+              v-if="route.meta.keepAlive"
+              :is="Component"
+              :key="route.name ?? route.path"
+            />
+          </KeepAlive>
+
+          <component
+            v-if="!route.meta.keepAlive"
+            :is="Component"
+            :key="route.fullPath"
+          />
         </RouterView>
       </main>
     </section>
