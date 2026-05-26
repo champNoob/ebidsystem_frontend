@@ -59,18 +59,34 @@ const userRanking = ref<UserRankingItem[]>([])
 const tradeTimeline = ref<TradeTimelineItem[]>([])
 
 const ORDER_STATUS_LABEL: Record<string, string> = {
-  pending: 'pending（待成交）',
-  partial: 'partial（部分成交）',
-  filled: 'filled（已成交）',
-  cancelled: 'cancelled（已撤销）',
+  pending: '待撮合',
+  partial: '部分成交',
+  filled: '已成交',
+  cancelled: '已撤销',
 }
 
 const USER_ROLE_LABEL: Record<string, string> = {
-  client: 'client（客户）',
-  seller: 'seller（卖方）',
-  trader: 'trader（交易员）',
-  sales: 'sales（销售）',
-  admin: 'admin（管理员）',
+  client: '普通客户',
+  seller: '卖方用户',
+  trader: '交易员',
+  sales: '销售',
+  admin: '管理员',
+}
+
+function completeItemsPreserveOrder(
+  sourceItems: { label: string; value: number }[],
+  requiredLabels: string[],
+): { label: string; value: number }[] {
+  const existed = new Set(sourceItems.map((item) => item.label))
+
+  const missingItems = requiredLabels
+    .filter((label) => !existed.has(label))
+    .map((label) => ({
+      label,
+      value: 0,
+    }))
+
+  return [...sourceItems, ...missingItems]
 }
 
 function unwrapArray(value: unknown): unknown[] {
@@ -125,22 +141,18 @@ function normalizeSymbolStats(raw: unknown): SymbolStat[] {
 }
 
 function normalizeOrderStatusStats(raw: unknown): OrderStatusStat[] {
-  const statusCounts: Record<string, number> = {
-    pending: 0,
-    partial: 0,
-    filled: 0,
-    cancelled: 0,
-  }
+  return unwrapArray(raw)
+    .map((item) => {
+      const obj = item && typeof item === 'object'
+        ? item as Record<string, unknown>
+        : {}
 
-  for (const item of unwrapArray(raw)) {
-    const obj = item && typeof item === 'object' ? item as Record<string, unknown> : {}
-    const status = toStringValue(obj.status, obj.order_status)
-    if (status !== '-') {
-      statusCounts[status] = toNumber(obj.count, obj.total, obj.value)
-    }
-  }
-
-  return Object.entries(statusCounts).map(([status, count]) => ({ status, count }))
+      return {
+        status: toStringValue(obj.status, obj.order_status),
+        count: toNumber(obj.count, obj.total, obj.value),
+      }
+    })
+    .filter((item) => item.status !== '-')
 }
 
 function normalizeUserRoleStats(raw: unknown): UserRoleStat[] {
@@ -198,16 +210,40 @@ const symbolVolumeItems = computed(() =>
 )
 
 const symbolTurnoverItems = computed(() =>
-  symbolStats.value.map((item) => ({ label: item.symbol, value: item.turnover })),
+  symbolStats.value.map((item) => ({
+    label: item.symbol,
+    value: Number(item.turnover || 0),
+  }))
 )
 
-const orderStatusItems = computed(() =>
-  orderStatusStats.value.map((item) => ({ label: String(item.status), value: item.count })),
-)
+const orderStatusItems = computed(() => {
+  const sourceItems = orderStatusStats.value.map((item) => ({
+    label: ORDER_STATUS_LABEL[item.status] || item.status,
+    value: Number(item.count || 0),
+  }))
 
-const userRoleItems = computed(() =>
-  userRoleStats.value.map((item) => ({ label: String(item.role), value: item.count })),
-)
+  return completeItemsPreserveOrder(sourceItems, [
+    '待撮合',
+    '部分成交',
+    '已成交',
+    '已撤销',
+  ])
+})
+
+const userRoleItems = computed(() => {
+  const sourceItems = userRoleStats.value.map((item) => ({
+    label: USER_ROLE_LABEL[item.role] || item.role,
+    value: Number(item.count || 0),
+  }))
+
+  return completeItemsPreserveOrder(sourceItems, [
+    '普通客户',
+    '卖方用户',
+    '交易员',
+    '销售',
+    '管理员',
+  ])
+})
 
 const userRankingItems = computed(() =>
   userRanking.value.map((item) => ({
