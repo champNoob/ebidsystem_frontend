@@ -7,6 +7,12 @@
 
     <div v-if="error" class="error">{{ error }}</div>
 
+    <div v-if="moduleErrorItems.length > 0" class="warning-list">
+      <div v-for="item in moduleErrorItems" :key="item" class="warning-item">
+        {{ item }}
+      </div>
+    </div>
+
     <section class="stat-grid">
       <StatCard title="订单总数" :value="summary?.total_orders ?? 0" />
       <StatCard title="成交总数" :value="summary?.total_trades ?? 0" />
@@ -51,6 +57,18 @@ import type {
 
 const loading = ref(false)
 const error = ref('')
+type DashboardModuleKey =
+  | 'summary'
+  | 'symbols'
+  | 'orderStatus'
+  | 'userRoles'
+  | 'userRanking'
+  | 'tradeTimeline'
+const moduleErrors = ref<Partial<Record<DashboardModuleKey, string>>>({})
+const moduleErrorItems = computed(() =>
+  Object.values(moduleErrors.value).filter((item): item is string => Boolean(item)),
+)
+
 const summary = ref<AdminDashboardSummary | null>(null)
 const symbolStats = ref<SymbolStat[]>([])
 const orderStatusStats = ref<OrderStatusStat[]>([])
@@ -256,28 +274,85 @@ const tradeVolumePoints = computed(() =>
   tradeTimeline.value.map((item) => ({ label: item.time_bucket, value: item.volume })),
 )
 
+async function loadDashboardPart(
+  key: DashboardModuleKey,
+  label: string,
+  request: () => Promise<{ data: unknown }>,
+  assign: (raw: unknown) => void,
+) {
+  try {
+    const response = await request()
+    assign(response.data)
+  } catch (requestError) {
+    moduleErrors.value = {
+      ...moduleErrors.value,
+      [key]: `${label}加载失败：${getApiErrorMessage(requestError, '接口请求失败')}`,
+    }
+  }
+}
 async function loadDashboard() {
   loading.value = true
   error.value = ''
+  moduleErrors.value = {}
 
   try {
-    const [summaryRes, symbolRes, orderStatusRes, userRoleRes, rankingRes, timelineRes] = await Promise.all([
-      getAdminDashboard(),
-      getSymbolStats(),
-      getOrderStatusStats(),
-      getUserRoleStats(),
-      getUserRanking(),
-      getTradeTimeline(),
-    ])
+    await Promise.all([
+      loadDashboardPart(
+        'summary',
+        '总览数据',
+        getAdminDashboard,
+        (raw) => {
+          summary.value = normalizeSummary(raw)
+        },
+      ),
 
-    summary.value = normalizeSummary(summaryRes.data)
-    symbolStats.value = normalizeSymbolStats(symbolRes.data)
-    orderStatusStats.value = normalizeOrderStatusStats(orderStatusRes.data)
-    userRoleStats.value = normalizeUserRoleStats(userRoleRes.data)
-    userRanking.value = normalizeUserRanking(rankingRes.data)
-    tradeTimeline.value = normalizeTradeTimeline(timelineRes.data)
-  } catch (requestError) {
-    error.value = getApiErrorMessage(requestError, '获取管理员看板数据失败')
+      loadDashboardPart(
+        'symbols',
+        'Symbol 成交统计',
+        getSymbolStats,
+        (raw) => {
+          symbolStats.value = normalizeSymbolStats(raw)
+        },
+      ),
+
+      loadDashboardPart(
+        'orderStatus',
+        '订单状态分布',
+        getOrderStatusStats,
+        (raw) => {
+          orderStatusStats.value = normalizeOrderStatusStats(raw)
+        },
+      ),
+
+      loadDashboardPart(
+        'userRoles',
+        '用户角色分布',
+        getUserRoleStats,
+        (raw) => {
+          userRoleStats.value = normalizeUserRoleStats(raw)
+        },
+      ),
+
+      loadDashboardPart(
+        'userRanking',
+        '用户交易排行',
+        getUserRanking,
+        (raw) => {
+          userRanking.value = normalizeUserRanking(raw)
+        },
+      ),
+
+      loadDashboardPart(
+        'tradeTimeline',
+        '成交趋势',
+        getTradeTimeline,
+        (raw) => {
+          tradeTimeline.value = normalizeTradeTimeline(raw)
+        },
+      ),
+    ])
+  } catch (unexpectedError) {
+    error.value = getApiErrorMessage(unexpectedError, '加载管理员看板时发生未知错误')
   } finally {
     loading.value = false
   }
@@ -342,5 +417,19 @@ button:disabled {
   border-radius: 10px;
   background: #fef2f2;
   color: #dc2626;
+}
+
+.warning-list {
+  display: grid;
+  gap: 8px;
+}
+
+.warning-item {
+  padding: 10px 12px;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 13px;
 }
 </style>

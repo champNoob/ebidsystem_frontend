@@ -1,10 +1,6 @@
 <template>
   <div class="panel admin-orders-view">
     <h2>订单管理</h2>
-    <p>
-      后台订单管理需要后端提供 GET /api/admin/orders 或 GET /api/admin/users/:id/orders。
-      当前接口尚未实现，因此本页面只保留查询 UI，不调用普通 /api/orders 伪造管理员订单管理。
-    </p>
 
     <div class="filters">
       <div class="form-item">

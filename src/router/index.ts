@@ -49,7 +49,6 @@ const router = createRouter({
           component: OrdersView,
           meta: { keepAlive: true },
         },
-           
         {
           path: 'place-order',
           name: 'PlaceOrder',
